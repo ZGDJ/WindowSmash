@@ -22,6 +22,9 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from required_hooks import reject_unvalidated_builder
+
 from toolchain import (CFLAGS, CLANG, DXVK_INCLUDE, DXVK_LIBS, LLVM, REPO, RUNTIME, SYSROOT, TOOLCHAIN, VKD3D_BUILD, VKD3D_SRC,
                        compile_each, default_port, read_port_stamp, run, same_path, write_port_stamp)
 
@@ -154,6 +157,7 @@ def overlay_font():
 
 
 def runtime_jobs():
+    reject_unvalidated_builder(RUNTIME, "the Linux builder")
     os.makedirs(GEN, exist_ok=True)
     rt_out = os.path.join(OUT, "rt")
     headers = [os.path.join(RUNTIME, n) for n in os.listdir(RUNTIME) if n.endswith(".h")] + \
@@ -219,6 +223,7 @@ def compile_all(jobs, what):
 
 
 def link():
+    reject_unvalidated_builder(RUNTIME, "the Linux builder")
     objs = []
     rt_out = os.path.join(OUT, "rt")
     objs += sorted(os.path.join(rt_out, n) for n in os.listdir(rt_out) if n.endswith(".o"))
@@ -260,6 +265,7 @@ def dxvk_libs():
 
 
 def main():
+    reject_unvalidated_builder(RUNTIME, "the Linux builder")
     os.makedirs(OUT, exist_ok=True)
     if not os.path.exists(os.path.join(VKD3D_BUILD, "linux", "libvkd3d-shader.a")):
         raise SystemExit("vkd3d-shader is not built: run tools/linux/build_vkd3d.py linux")

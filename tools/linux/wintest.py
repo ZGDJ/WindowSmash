@@ -17,6 +17,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(REPO, "tools"))
 import cc  # noqa: E402  (the Windows toolchain, from this tree)
+from required_hooks import reject_unvalidated_builder
 from toolchain import PORT_DIR, TOOLCHAIN, VKD3D_BUILD, VKD3D_SRC  # noqa: E402
 
 
@@ -30,6 +31,7 @@ VKD3D = "--vkd3d" in sys.argv
 
 
 def main():
+    reject_unvalidated_builder(cc.RUNTIME, "the Windows renderer test builder")
     rt = os.path.join(OUT, "rt")
     os.makedirs(rt, exist_ok=True)
     import re

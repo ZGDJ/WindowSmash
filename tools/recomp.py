@@ -44,6 +44,7 @@ from collections import Counter
 from multiprocessing import Pool
 
 import modcache
+import required_hooks
 from funcs import discover
 from lift import Lifter
 from nso import Module
@@ -134,6 +135,19 @@ def hle_wraps():
     return found
 
 
+def required_wraps():
+    return required_hooks.declarations(os.path.join(ROOT, "runtime"))
+
+
+def validate_hook_identity(path, name, required):
+    pins = [pin for pin in required.values() if pin["module"] == name]
+    if pins:
+        from baseline_manifest import module_identity
+        actual = module_identity(path)
+        if any(actual["build_id"] != pin["build_id"] or actual["sha256"] != pin["sha256"] for pin in pins):
+            raise ValueError(f"{name}: required hook module identity mismatch; supply the pinned 13.0.5 input")
+
+
 def signature(mod, off, size, n=16):
     """The code signature of the function at module offset `off`: its first n instructions as
     hex words, with the nibbles that depend on where code and data lie ('.') - the immediates
@@ -172,22 +186,46 @@ def signature_pattern(sig):
     return re.compile(b"(?=" + pat + b")", re.S)
 
 
-def resolve_wraps(mod, base, sizes, name):
+def resolve_wraps(mod, base, sizes, name, required=None):
     """This module's wraps: {offset: ("wrap", wrapper)}, and [(address, address in this
     version)] for each found by its signature somewhere else than its address."""
-    forward, moved = {}, []
+    required = required_wraps() if required is None else required
+    forward, moved, owners = {}, [], {}
     for a, sig in sorted(hle_wraps().items()):
+        if a in required:
+            pin = required[a]
+            if pin["module"] != name:
+                continue
+            if sig != pin["signature"]:
+                raise ValueError(f"{name}: required HLE_WRAP({a:x}) signature declaration changed")
+            hits = [off for off, size in sizes.items() if mod.text.mem <= off < mod.text.end
+                    and off % 4 == 0 and signature(mod, off, size, len(sig)) == sig]
+            if len(hits) != 1:
+                raise ValueError(f"{name}: required HLE_WRAP({a:x}) has {len(hits)} signature matches; exactly one is required")
+            off = hits[0]
+            if off in forward:
+                raise ValueError(f"{name}: required hook collides with HLE_WRAP({owners[off]:x})")
+            forward[off], owners[off] = ("wrap", f"hle_wrap_{a:x}"), a
+            if base + off != a:
+                moved.append((a, base + off))
+            continue
         if max((b for b in MODULES.values() if b <= a), default=None) != base:
             continue   # another module's
         off = a - base
         if off in sizes and (sig is None or signature(mod, off, sizes[off], len(sig)) == sig):
+            if owners.get(off) in required:
+                raise ValueError(f"{name}: optional HLE_WRAP({a:x}) collides with a required hook")
             forward[off] = ("wrap", f"hle_wrap_{a:x}")
+            owners[off] = a
             continue
         text = bytes(mod.image[mod.text.mem:mod.text.end])
         hits = [mod.text.mem + m.start() for m in signature_pattern(sig).finditer(text)] if sig else []
         hits = [h for h in hits if h in sizes and signature(mod, h, sizes[h], len(sig)) == sig]
         if len(hits) == 1:
+            if owners.get(hits[0]) in required:
+                raise ValueError(f"{name}: optional HLE_WRAP({a:x}) collides with a required hook")
             forward[hits[0]] = ("wrap", f"hle_wrap_{a:x}")
+            owners[hits[0]] = a
             moved.append((a, base + hits[0]))
             print(f"{name}: HLE_WRAP({a:x}) is at {base + hits[0]:x} in this version (found by its signature)")
         else:
@@ -199,7 +237,7 @@ def resolve_wraps(mod, base, sizes, name):
 def tools_fingerprint():
     """What the generated C depends on besides the module and its address (modcache)."""
     wraps = sorted(hle_wraps().items())
-    return modcache.fingerprint("\n".join(sorted(hle_names())) + "\n" + repr(wraps))
+    return modcache.fingerprint("\n".join(sorted(hle_names())) + "\n" + repr(wraps) + repr(sorted(required_wraps().items())))
 
 
 def write_if_changed(path, text):
@@ -328,11 +366,11 @@ def load(path):
     return mod, found, sorted(funcs + extra)
 
 
-def image_file(mod):
+def image_file(mod, force=False):
     build_dir = os.path.join(TREE, "build")
     os.makedirs(build_dir, exist_ok=True)
     path = os.path.join(build_dir, f"image-{mod.build_id[:16]}.img")
-    if not os.path.exists(path) or os.path.getsize(path) != len(mod.image):
+    if force or not os.path.exists(path) or os.path.getsize(path) != len(mod.image):
         with open(path, "wb") as f:
             f.write(mod.image)
     return path
@@ -466,14 +504,18 @@ def module_table(mod, name, base, funcs, missing, moved=()):
 
 
 def build(path, outdir, jobs, per_file):
+    required = required_wraps()
+    name = module_key(path)
+    validate_hook_identity(path, name, required)
     mod, found, funcs = load(path)
     name, base = module_key(path), base_of(path)
+    validate_hook_identity(path, name, required)
     os.makedirs(outdir, exist_ok=True)
     modcache.clear_stamp(outdir)   # (until generated and compiled again)
     hle = hle_names()
     forward = {v: f"hle_{n}" for n, v, _s, info, _x in mod.exports if n in hle and info & 0xF == 2}
     forward.update(unwind_jumpto(mod, found))
-    wraps, moved = resolve_wraps(mod, base, dict(funcs), name)
+    wraps, moved = resolve_wraps(mod, base, dict(funcs), name, required)
     forward.update(wraps)
     from eh import landing_pads
     pads = landing_pads(mod)
@@ -488,7 +530,8 @@ def build(path, outdir, jobs, per_file):
         chunks.append(cur)
     defined = {a for a, _ in funcs}
     missing, manifest, bad, unresolved = set(), [], 0, []
-    with Pool(jobs, _init, (image_file(mod), set(found), base, forward, setjmp_targets(mod), pads)) as pool:
+    critical = any(pin["module"] == name for pin in required.values())
+    with Pool(jobs, _init, (image_file(mod, force=critical), set(found), base, forward, setjmp_targets(mod), pads)) as pool:
         tasks = [(i, c, outdir) for i, c in enumerate(chunks)]
         for fname, ext, insns, biggest, b, unres in pool.imap_unordered(_emit, tasks):
             missing |= ext - defined
@@ -507,6 +550,8 @@ def build(path, outdir, jobs, per_file):
           f"{sum(i for _n, i, _b in manifest):,} instructions; {bad} untranslated, {len(missing)} calls to nowhere, "
           f"{len(unresolved)} unresolved jump tables, {len(forward)} replaced natively; "
           f"{imports:,} symbols referenced by {relocs:,} relocations")
+    validate_hook_identity(path, name, required)
+    return {a: pin for a, pin in required.items() if pin["module"] == name}
 
 
 def compile_dir(outdir, jobs):
@@ -530,8 +575,11 @@ def compile_dir(outdir, jobs):
     return not failures
 
 
-def link(dirs, exe):
+def link(dirs, exe, *, validated_hooks=None):
     """Compile the host runtime and link it with the given module build directories."""
+    required = required_wraps()
+    if required and validated_hooks != required:
+        raise ValueError("required hooks need fresh validation and generation: use recomp.py all, not standalone link")
     import cc
     t0 = time.time()
     rt_dir = os.path.join(os.path.dirname(exe), "rt")
@@ -567,7 +615,7 @@ def link(dirs, exe):
     for d in dirs:
         objs += sorted(os.path.join(d, n) for n in os.listdir(d) if n.endswith(".obj"))
     # a wrap no module has (another game version): its original is a stub nothing calls
-    cc.link(objs, exe, [f"/alternatename:f_{a:x}_orig=rt_wrap_missing" for a in sorted(hle_wraps())])
+    cc.link(objs, exe, [f"/alternatename:f_{a:x}_orig=rt_wrap_missing" for a in sorted(hle_wraps()) if a not in required])
     print(f"linked {len(objs)} objects into {exe} ({os.path.getsize(exe) / 1048576:,.0f} MB) in {time.time() - t0:,.0f}s")
     return True
 
@@ -588,34 +636,43 @@ def check(exefs):
 
 def build_all(exefs, out, jobs):
     dirs = []
+    required = required_wraps()
     paths = module_paths(exefs)
+    for name in {pin["module"] for pin in required.values()}:
+        if name not in paths:
+            raise ValueError(f"{name}: required hook module is missing")
+        validate_hook_identity(paths[name], name, required)
     check(exefs)
     fp = tools_fingerprint()
     reused = 0
+    validated = {}
     for name, nso in paths.items():
+        critical = any(pin["module"] == name for pin in required.values())
         target = os.path.join(out, "nro", name) if os.path.dirname(nso) == NRO_DIR else os.path.join(out, name)
         img = os.path.join(TREE, "dump", "modules", name + ".reloc.bin")
-        if not os.path.exists(img) or os.path.getmtime(img) < os.path.getmtime(nso):
+        if critical or not os.path.exists(img) or os.path.getmtime(img) < os.path.getmtime(nso):
             image(nso, img)
         mod, base = Module(nso), MODULES[name]
         info = modcache.build_info(target)
-        if not info or info[:2] != (mod.build_id, base):   # another tree may have built it
+        if not critical and (not info or info[:2] != (mod.build_id, base)):   # another tree may have built it
             src = modcache.find_built(mod.build_id, base, target, fp)
             if src:
                 linked, copied = modcache.adopt(src, target)
                 print(f"{name}: build files of {src} ({linked} linked, {copied} copied)")
                 info = modcache.build_info(target)
-        if info == (mod.build_id, base, name, fp):
+        if not critical and info == (mod.build_id, base, name, fp):
             print(f"{name}: C up to date (build id {mod.build_id[:16]}, same tools)")
             reused += 1
         else:
-            build(nso, target, jobs, 40000)
+            validated.update(build(nso, target, jobs, 40000))
         if not compile_dir(target, min(jobs, 16)):
             return False
         modcache.write_stamp(target, mod.build_id, base, name, fp)
         dirs.append(target)
     print(f"{reused} of {len(paths)} modules reused without generating their C again")
-    return link(dirs, os.path.join(out, "ssbu.exe"))
+    for name in {pin["module"] for pin in required.values()}:
+        validate_hook_identity(paths[name], name, required)
+    return link(dirs, os.path.join(out, "ssbu.exe"), validated_hooks=validated)
 
 
 def arg(name, default=None):
