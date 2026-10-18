@@ -46,25 +46,25 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Blocker: none
 
 ### M0.4 - Investigate relay ordering intermittency
-- Status: todo
+- Status: done
 - Depends: M0.2
 - Size: 2
 - Requirement: FSD-012
-- Evidence: none
+- Evidence: evidence/2026-10-18-practical-audit.md
 - Acceptance: Reproduce/minimize ordering failure or report bounded negative investigation and follow-up; no silent quarantine.
 - Owner: unassigned
-- Next: Inspect asynchronous room creation/test synchronization.
+- Next: Keep the fixed-time ordering regression in CI; protocol behavior is unchanged.
 - Blocker: none
 
 ### M0.5 - Source-only CI
-- Status: todo
+- Status: in_progress
 - Depends: M0.1, M0.3
 - Size: 2
 - Requirement: FSD-011, FSD-012
 - Evidence: none
 - Acceptance: Fork CI runs contract and appropriate source tests on Windows without private data; flaky suite policy explicit.
-- Owner: unassigned
-- Next: Add minimal workflow without private runners/data.
+- Owner: root / architecture audit / 2026-10-18T16:50:36Z
+- Next: Observe hosted Windows CI after pushing the reviewed implementation.
 - Blocker: none
 
 ### M0.6 - Audit GGPO and Smash-specific design
@@ -76,6 +76,17 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Acceptance: Primary GGPO/Slippi sources inspected; design/FSD/dependencies address adapter, input-history and terminal-state gaps; independent review and validator pass.
 - Owner: unassigned
 - Next: Use the accepted contract in engine and session work; revalidate backend specifics when pinning dependencies.
+- Blocker: none
+
+### M0.7 - Reject empty differential test success
+- Status: done
+- Depends: M0.3
+- Size: 2
+- Requirement: FSD-012, FSD-013
+- Evidence: evidence/2026-10-18-practical-audit.md
+- Acceptance: Differential harnesses reject invalid trial counts and runs with zero completed comparisons; synthetic tests cover exit semantics without private inputs.
+- Owner: unassigned
+- Next: Require fixture-specific comparison coverage before game-backed qualification.
 - Blocker: none
 
 ## M1 - Reproducible 13.0.5 baseline
@@ -93,7 +104,7 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 
 ### M1.2 - Build and complete 13.0.5 offline matches
 - Status: blocked
-- Depends: M1.1
+- Depends: M1.1, M1.4
 - Size: 5
 - Requirement: FSD-001
 - Evidence: none
@@ -113,6 +124,17 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Next: Inspect resolve_wraps and required-versus-optional semantics.
 - Blocker: none
 
+### M1.4 - Invalidate stale compiled objects
+- Status: done
+- Depends: M0.3
+- Size: 3
+- Requirement: FSD-001, FSD-011
+- Evidence: evidence/2026-10-18-practical-audit.md
+- Acceptance: Windows generated/runtime objects invalidate on changed source/repository-header/compiler/configuration; unchanged builds reuse safely; failure retry and cross-tree hard-link isolation have synthetic tests. Actual game builds remain M1.2.
+- Owner: unassigned
+- Next: Use compile identity for Windows builds; validate actual private build in M1.2.
+- Blocker: none
+
 ## M2 - Controlled simulation
 
 ### M2.1 - Discover tick and continuation boundary
@@ -121,7 +143,7 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Size: 8
 - Requirement: FSD-002, FSD-005
 - Evidence: none
-- Acceptance: Trace version-specific tick boundary and worker/fiber invariants; remediate unsafe continuations before closing this capability gate.
+- Acceptance: Trace version-specific tick boundary, worker/fiber invariants, VI buffer recycling, audio completion and GPU guest timestamps; remediate unsafe continuations before closing this capability gate.
 - Owner: unassigned
 - Next: Split trace, job inventory and safe-boundary proof packets.
 - Blocker: none
@@ -143,7 +165,7 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Size: 5
 - Requirement: FSD-002
 - Evidence: none
-- Acceptance: 600 steps independent of presentation cadence with authoritative jobs quiescent; independent review recorded.
+- Acceptance: 600 steps independent of presentation cadence with authoritative jobs quiescent; guest-visible display/audio completions progress during suppressed presentation without wall-clock waits or changed semantics; independent review recorded.
 - Owner: unassigned
 - Next: Integrate explicit driver with proven boundary.
 - Blocker: none

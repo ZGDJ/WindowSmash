@@ -10,7 +10,11 @@ python -I tools/test_ssbu_relay.py -v
 
 Project checks use Python 3.12+; inherited config/save tests need Windows PowerShell; relay tests need loopback UDP. Full build prerequisites are in [BUILDING.md](BUILDING.md). Synthetic tests use disposable files. Separate permission failures from defects and retry only with legitimate permissions.
 
-[Baseline evidence](../evidence/2026-10-18-upstream-baseline.md): 16 utility tests passed; 27/28 relay tests passed, with room-ordering failing in the suite and passing alone. This intermittent concern is not a waiver. Added validator tests change counts; record actual output.
+[Source CI](../.github/workflows/source-checks.yml) runs these same commands on Windows with Python 3.12 (minimum project-check version) and 3.14 (full-workflow Python version). It uses disposable synthetic data and loopback UDP, with no game inputs, secrets, package installation or self-hosted runner. The latter steps still run after an earlier failure to expose independent failures; the job remains failed. Actions are pinned to commits. See [GitHub's Python workflow guidance](https://docs.github.com/en/actions/tutorials/build-and-test-code/python).
+
+Do not hide intermittent tests with retries, skips or `continue-on-error`. Preserve the first failure and minimize it; reruns diagnose reliability, not erase the failure. Keep unrelated checks running, then fix the test or product with a regression. [Baseline evidence](../evidence/2026-10-18-upstream-baseline.md) preserves the original relay failure; [audit evidence](../evidence/2026-10-18-practical-audit.md) records the clock-tie reproducer and fix.
+
+Game-backed `difftest.py` and `functest.py` use exit 0 for nonempty comparison without hard mismatches, 1 for mismatches and 2 for invalid arguments or zero completed comparisons. A nonempty run still does not prove sufficient coverage: evidence must name selected cases, compared/skipped counts and exclusions. Set fixture-specific minimum coverage before qualification; do not treat one surviving comparison as full coverage.
 
 ## Evidence and closure
 

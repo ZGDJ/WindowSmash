@@ -17,4 +17,6 @@ The [preserved README](../README-UPSTREAM.md) describes upstream releases/featur
 - [gpu.c](../runtime/gpu.c), [gpu_d3d11.c](../runtime/gpu_d3d11.c), [ipc_audio.c](../runtime/ipc_audio.c): guest-visible writes and asynchronous effects.
 - [hle_net.c](../runtime/hle_net.c), [net_relay.c](../runtime/net_relay.c): Local Wireless transport, not rollback.
 
+For source-only build/test work, start with [cc.py](../tools/cc.py) and [modcache.py](../tools/modcache.py) for object compilation and cross-tree reuse, [functest.py](../tools/functest.py) and [difftest.py](../tools/difftest.py) for game-backed comparison harnesses, and [tests](../tests) for disposable source fixtures. The lobby's independent loopback suite is [test_ssbu_relay.py](../tools/test_ssbu_relay.py). These are separate proof levels; passing utility tests cannot qualify translated instructions or battle replay.
+
 See [baseline evidence](../evidence/2026-10-18-upstream-baseline.md). Preserve [NOTICE.md](../NOTICE.md): upstream does not specify a project-wide license for remaining source. Do not invent permissions or apply a blanket license. Distribution policy is a release prerequisite, separate from feasibility.

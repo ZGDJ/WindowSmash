@@ -26,6 +26,15 @@ Split/stop: missing prerequisite, architecture decision, excessive scope
 Handoff: results, uncertainty, next action
 ```
 
+## Keep changes readable and removable
+
+- Use the [source map](UPSTREAM.md#source-seams) to find existing owners before adding a file or abstraction. Keep one owner for each fact, state buffer and clock.
+- Keep new battle hooks thin. Put checkpoint policy and session coordination behind the proven battle boundary; do not spread networking decisions through HLE services or generated game code.
+- Prefer a concrete function or module over a plugin system, generic scheduler or configuration layer. Extract shared code only when actual callers need the same contract.
+- For a new subsystem, document its inputs, outputs, state owner, cleanup and failure behavior next to the interface. Explain invariants and reasons; avoid comments that narrate the code.
+- Keep experiments in a removable module or tool with explicit entry/exit points. A local revert must restore the previous path without a data migration; test the disabled path when introducing runtime integration. Do not add dormant rollback hooks before the boundary is known.
+- Avoid bulk renames, formatting and source moves in behavioral fixes. Preserve upstream comparability and keep tests with the behavior they protect.
+
 ## Calculate scope without false precision
 
 Use 1/2/3/5/8 relative effort units: 1 bounded source check/change; 2–3 focused subsystem; 5 substantial research/integration; 8 high uncertainty requiring decomposition before implementation. These are not hours, tokens or model calls. Discovery may expand scope.

@@ -15,7 +15,7 @@ The source tree contains the recompiler and host runtime. It does not contain th
 | Graphics | A Direct3D 11-capable GPU and working Windows driver. |
 | Python | **3.14** for the full workflow; `arc.py` uses `compression.zstd`. |
 | C toolchain | Visual Studio 2022 or newer with **Desktop development with C++**, **C++ Clang Compiler for Windows**, and a Windows SDK. |
-| Inputs | Your game version **11.0.0**, update already applied to RomFS, matching ExeFS, and your own firmware fonts. Package extraction also needs your own keys. |
+| Inputs | Target **13.0.5**, update already applied to RomFS, matching ExeFS, and your own firmware fonts. Package extraction also needs your own keys. The inherited tools also support other versions; those do not qualify this fork. |
 | Storage | Allow space for the game image, extracted modules, generated C, object files, and maps. Several tens of GB may be required; a local bundle needs additional free space. |
 
 Use a Python 3.14 virtual environment if other Python versions are installed:
