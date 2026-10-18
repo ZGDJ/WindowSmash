@@ -57,14 +57,14 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Blocker: none
 
 ### M0.5 - Source-only CI
-- Status: in_progress
+- Status: done
 - Depends: M0.1, M0.3
 - Size: 2
 - Requirement: FSD-011, FSD-012
-- Evidence: none
+- Evidence: evidence/2026-10-18-practical-audit.md
 - Acceptance: Fork CI runs contract and appropriate source tests on Windows without private data; flaky suite policy explicit.
-- Owner: root / architecture audit / 2026-10-18T16:50:36Z
-- Next: Observe hosted Windows CI after pushing the reviewed implementation.
+- Owner: unassigned
+- Next: Keep source checks required for review; game-backed validation remains separate.
 - Blocker: none
 
 ### M0.6 - Audit GGPO and Smash-specific design

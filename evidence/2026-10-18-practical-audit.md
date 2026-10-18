@@ -82,7 +82,14 @@ is in-memory only and was not committed. The experiment also exposed a test bool
 
 Final integrated `python -m unittest discover -s tests -v`: 51/51 pass in 6.147 seconds, exit 0.
 `python tools/check_project_docs.py`: pass, exit 0. `git diff --check`: pass, exit 0.
-Hosted CI remains to be observed before closing M0.5.
+Hosted [source CI run 39147300140](https://github.com/ZGDJ/WindowSmash/actions/runs/39147300140)
+passed on implementation/planning revision `f3ca71eb1ea97db9f218e0ad1a373550b1d7389b`.
+Both Windows Python 3.12 and 3.14 jobs completed all three checks successfully (46 seconds per
+job). M0.5 is closed with this observed run; no game-backed gate is closed.
+
+The source fixes, CI and planning updates are available in
+[draft PR #2](https://github.com/ZGDJ/WindowSmash/pull/2) against the fork's `main` branch.
+No merge or release was performed.
 
 ## Limits and handoff
 
