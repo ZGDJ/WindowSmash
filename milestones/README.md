@@ -114,14 +114,14 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Blocker: No private 13.0.5 inputs/build available in current checkout.
 
 ### M1.3 - Critical hook validation
-- Status: in_progress
+- Status: done
 - Depends: M1.1
 - Size: 3
 - Requirement: FSD-011
-- Evidence: none
+- Evidence: evidence/2026-10-18-baseline-foundation.md
 - Acceptance: Required hooks fail closed for missing/ambiguous/mismatched identity; negative tests pass; actual battle hooks qualify in M2.1.
-- Owner: root / hook implementation / 2026-10-18T17:16:17Z
-- Next: Add fail-closed identity/signature checks without changing inherited optional debug hooks.
+- Owner: unassigned
+- Next: Register actual pinned hooks only after boundary discovery; qualify them in M2.1.
 - Blocker: none
 
 ### M1.4 - Invalidate stale compiled objects
