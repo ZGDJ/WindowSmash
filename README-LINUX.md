@@ -1,5 +1,7 @@
 # Super Smash Bros. Ultimate (native port) on Linux
 
+> Inherited documentation. SmashRollback initially targets Windows x64; Linux rollback is out of scope. See the [fork README](README.md).
+
 The same recompiled game as the Windows build, as a native x86-64 Linux program. The renderer is
 still the Direct3D 11 one, running on Vulkan through **DXVK**. Its shaders are compiled by
 **vkd3d-shader** when they aren't already in the shader cache, and the cache from the Windows

@@ -1,5 +1,7 @@
 # Multiplayer setup
 
+> Inherited Local Wireless transport, not rollback. SmashRollback's planned 1v1 rollback session is tracked in the [milestone ledger](milestones/README.md).
+
 [README](README.md) · [Runtime setup](docs/RUNTIME-SETUP.md) · [Build from source](docs/BUILDING.md) · [Technical guide](docs/TECHNICAL.md)
 
 WindowSmash carries the game's **Local Wireless** mode through a UDP relay. By default, `Play SSBU.bat` joins an **online lobby**: every Local Wireless room anyone creates appears in the Rooms List of every player with the same game version, and nobody hosts anything outside the game. For a private group, one player can run the relay inside their game, or everyone can connect to a standalone relay. Nintendo's online service is not used.

@@ -1,5 +1,7 @@
 # How WindowSmash works
 
+> Inherited architecture reference. SmashRollback's target design and unproven capabilities are specified in [FSD](FSD.md), [ADRs](../adr/README.md) and [milestones](../milestones/README.md).
+
 [README](../README.md) · [Build guide](BUILDING.md) · [Multiplayer](../NETPLAY.md) · [DLC and saves](DLC-AND-UNLOCKS.md)
 
 WindowSmash is a static recompiler plus a Windows compatibility runtime, specialized for this game. CPU code is translated before launch. GPU programs are translated when encountered. Selected operating-system and SDK entry points are implemented natively, while the remaining game and SDK code executes as compiled guest functions.

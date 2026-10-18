@@ -1,5 +1,7 @@
 # Build from your own game files
 
+> SmashRollback targets **13.0.5** from the start. This inherited guide also describes upstream 11.0.0; follow the [version guide](VERSIONS.md) for matching 13.0.5 inputs. A successful build does not prove rollback; see [milestones](../milestones/README.md).
+
 [README](../README.md) · [Use a runtime release](RUNTIME-SETUP.md) · [Multiplayer](../NETPLAY.md) · [Technical guide](TECHNICAL.md)
 
 The source tree contains the recompiler and host runtime. It does not contain the game's CPU code, assets, fonts, keys, firmware, or a prepared save. Keep those inputs local.
