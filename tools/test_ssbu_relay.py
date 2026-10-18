@@ -304,6 +304,46 @@ class Banning(LobbyTest):
         self.assertEqual(p.recv(0.3), [])
 
 
+class ListingOrder(unittest.TestCase):
+    def test_equal_timestamps_keep_advertisement_order(self):
+        # A coarse monotonic clock can assign every advert the same timestamp.
+        # Host addresses and session IDs must not substitute for opening order.
+        lobby = R.Lobby(R.options())
+        now = 100.0
+        part = (BUILD.encode(), "smash")
+        hosts = [R.Client(("127.0.0.1", i), bytes(8), R.SUBNET + i,
+                          "Host", part, now, lobby.o) for i in range(2, 10)]
+        looker = R.Client(("127.0.0.1", 10), bytes(8), R.SUBNET + 10,
+                          "Looker", part, now, lobby.o)
+        packets = []
+        lobby.send = lambda packet, at: packets.append(packet)
+
+        def advertise(host):
+            session = host.ip.to_bytes(16, "big")
+            info = info_of(session, host.ip)
+            lobby.on_advertise(host, R.ldn_packet(host.ip, BCAST, R.LM_ADVERTISE, info), info, now)
+
+        def listed():
+            packets.clear()
+            lobby.on_list(looker, bytes(4), now)
+            return [struct.unpack_from(">I", p, 8)[0] for p in packets if p[3] == R.LISTING]
+
+        opened = list(reversed(hosts))
+        for host in opened:
+            host.ping = 50
+            advertise(host)
+        self.assertEqual(listed(), [h.ip for h in opened])
+
+        # Refreshes and ping jitter preserve position; reopening is a new room.
+        opened[0].ping = 180
+        advertise(opened[0])
+        self.assertEqual(listed(), [h.ip for h in opened])
+        lobby.close(opened[0].listing)
+        opened[0].ping = 50
+        advertise(opened[0])
+        self.assertEqual(listed(), [h.ip for h in opened[1:] + opened[:1]])
+
+
 class Listing(LobbyTest):
     def test_order_keeps_through_ping_jitter(self):
         far = self.player()

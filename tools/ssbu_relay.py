@@ -163,7 +163,7 @@ class Lobby(asyncio.DatagramProtocol):
         self.by_addr = {}       # (host, port) -> Client
         self.by_ip = {}         # virtual address -> Client
         self.parts = {}         # (build, lobby code) -> set of Client
-        self.part_rooms = {}    # (build, lobby code) -> set of Listing
+        self.part_rooms = {}    # (build, lobby code) -> insertion-ordered dict of Listing -> None
         self.listings = {}      # session id -> Listing
         self.per_ip = collections.Counter()   # host -> verified players from there
         self.pending = 0        # players not verified yet
@@ -278,7 +278,7 @@ class Lobby(asyncio.DatagramProtocol):
         self.listings.pop(listing.session, None)
         rooms = self.part_rooms.get(listing.owner.part)
         if rooms is not None:
-            rooms.discard(listing)
+            rooms.pop(listing, None)
             if not rooms:
                 del self.part_rooms[listing.owner.part]
         if listing.owner.listing is listing:
@@ -422,7 +422,8 @@ class Lobby(asyncio.DatagramProtocol):
     def on_list(self, c, seq, now):
         """The rooms this player's Rooms List shows: open ones first, fuller ones first, then the
         ones whose host is closest to the lobby (in 100 ms steps, taken when the room opened: the
-        list must not reorder under the player's cursor from one scan to the next), then the oldest."""
+        list must not reorder under the player's cursor from one scan to the next), then the oldest.
+        Stable sorting retains opening order when the monotonic clock gives equal timestamps."""
         rooms = sorted((r for r in self.part_rooms.get(c.part, ()) if r.owner is not c and now - r.updated <= self.o.listed_for),
                        key=lambda r: (not r.open, -r.count, 10 if r.distance is None else r.distance, r.created))[:LIST_MAX]
         for r in rooms:
@@ -495,7 +496,7 @@ class Lobby(asyncio.DatagramProtocol):
                 self.close(c.listing)
             c.claim = None
             listing = c.listing = self.listings[session] = Listing(c, session, now)
-            self.part_rooms.setdefault(c.part, set()).add(listing)
+            self.part_rooms.setdefault(c.part, {})[listing] = None
             self.log(f"{printable(c.name)} opened a room ({info[NI_NODE_MAX]} players at most)")
         if listing.distance is None and c.ping != 0xFFFF:
             listing.distance = min(c.ping, 1000) // 100
