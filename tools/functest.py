@@ -12,7 +12,10 @@ functions containing jump tables.
 
 Memory is arranged so that pointers loaded from arguments usually point somewhere valid.
 Runs the reference side cannot finish (fault, write to a global, too long) are skipped.
+Exit codes: 0 nonempty comparison without hard mismatches, 1 mismatch, 2 invalid arguments
+or inconclusive (no completed comparisons). Reported coverage still limits any pass.
 """
+import argparse
 import os
 import random
 import struct
@@ -24,7 +27,7 @@ from multiprocessing import Pool
 
 import cc
 from a64 import sx
-from difftest import nan_only, rand_v, rand_x
+from difftest import comparison_exit_code, nan_only, nonnegative_int, positive_int, rand_v, rand_x
 from funcs import discover
 from lift import BASE, Lifter
 from nso import Module
@@ -195,14 +198,22 @@ def _run(args):
     return ran, skipped, bad, nan_runs
 
 
-def arg(name, default=None):
-    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("nso")
+    parser.add_argument("--functions", type=positive_int, default=3000)
+    parser.add_argument("--states", type=positive_int, default=8)
+    parser.add_argument("--jobs", type=positive_int, default=8)
+    parser.add_argument("--max-insns", type=positive_int, default=4000)
+    parser.add_argument("--show", type=nonnegative_int, default=5)
+    return parser.parse_args(argv)
 
 
 def main():
-    nso = sys.argv[1]
-    want, states = int(arg("--functions", "3000")), int(arg("--states", "8"))
-    jobs, max_insns = int(arg("--jobs", "8")), int(arg("--max-insns", "4000"))
+    args = parse_args()
+    nso = args.nso
+    want, states = args.functions, args.states
+    jobs, max_insns = args.jobs, args.max_insns
     work = os.path.join(cc.ROOT, "build", "functest")
     os.makedirs(work, exist_ok=True)
     image_path = os.path.join(cc.ROOT, "dump", "modules", "main.reloc.bin")
@@ -228,6 +239,8 @@ def main():
         with_tables += "switch (" in code
         chosen.append((start, code))
     print(f"{len(chosen):,} leaf functions selected ({with_tables:,} with jump tables) x {states} states")
+    if not chosen:
+        return comparison_exit_code(0, False)
 
     sources = []
     for f0 in range(0, len(chosen), 400):
@@ -267,11 +280,11 @@ def main():
     failing = sorted({i for i, _w in bad})
     print(f"functions with mismatches: {len(failing):,}   "
           f"(stored NaNs differing only in sign/payload: {sum(nan_runs.values())} runs in {len(nan_runs)} functions)")
-    for i in failing[:int(arg("--show", "5"))]:
+    for i in failing[:args.show]:
         addr = chosen[i][0]
         reasons = [w for j, w in bad if j == i]
         print(f"  f_{addr:08x} ({sizes[addr] // 4} instructions, {len(reasons)}/{ran[i]} runs differ): {reasons[0]}")
-    return 1 if bad else 0
+    return comparison_exit_code(total, bad)
 
 
 if __name__ == "__main__":

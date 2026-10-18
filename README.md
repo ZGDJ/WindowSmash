@@ -34,6 +34,8 @@ python -I tools/test_ssbu_relay.py -v
 
 Relay tests need loopback UDP. These tests do not demonstrate gameplay or rollback.
 
+The [source CI workflow](.github/workflows/source-checks.yml) runs the same checks on Windows with Python 3.12 and 3.14. See the [practical audit](evidence/2026-10-18-practical-audit.md) for repaired build/test gaps and the next implementation priorities.
+
 ## Provenance
 
 Fork: [ZGDJ/WindowSmash](https://github.com/ZGDJ/WindowSmash). Baseline: `4b512d2ad44f2312d47d5ba5746f96a27eda3653`.

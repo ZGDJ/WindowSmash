@@ -12,6 +12,14 @@ Define three separate horizons: simulated state, latest actual input available f
 
 Checkpoint buffers remain immutable and valid until their owner releases them. Restoring cannot invalidate retained snapshots through aliasing. Define allocation failure, stale snapshot, double-free and session-close behavior. A K-tick correction horizon generally needs the current boundary plus K prior boundaries in a simple per-tick ring; derive exact retention from chosen frame convention, input delay and backend, and test oldest-boundary access. Never evict state still needed by an accepted correction.
 
+## Implementation boundaries
+
+Preserve the current C/HLE runtime. Establish a small offline engine interface for input, one tick, capture, restore and diagnostics before adding a session backend. The engine owns authoritative state; the coordinator owns input receipt/history, prediction and confirmation; host services own external effects. A checkpoint must not capture the coordinator or sockets. Keep device polling outside replay and effect policy outside the transport.
+
+Do not choose a generic snapshot framework, replacement scheduler or transport abstraction ahead of measured failures. Begin with explicit state coverage and a simple bounded checkpoint ring once safe capture is demonstrated. Add selective copying or compression only after correctness and profiling justify them. One offline driver and the eventual network coordinator must use the same battle stepping path.
+
+During M2 boundary discovery, trace `ipc_vi.c` buffer recycling/events, `ipc_audio.c` buffer release/events and `gpu.c` guest timestamp writes. Skipping display or muting audio must not prevent guest-visible completion or substitute wall-clock-dependent results during catch-up. Compare audio-device-present/absent and presentation-enabled/suppressed paths. Record service queues and completion state in the ownership inventory; avoid assuming they are cosmetic.
+
 ## GGPO adapter obligations
 
 The pinned [public API](https://github.com/pond3r/ggpo/blob/7ddadef8546a7d99ff0b3530c6056bc8ee4b9c0a/src/include/ggponet.h) requires save/load/free and diagnostic callbacks plus one-frame advancement and event handling. Use `ggpo_synchronize_input` (singular in this header) for normal and replayed frames. Notify `ggpo_advance_frame` only after a successful tick. Replay uses historical synchronized input, not fresh device sampling or resubmission. Service `ggpo_idle`; respect synchronization/prediction errors. Handle time-sync and disconnect events without changing simulated tick duration. Frame delay and prediction horizon are distinct settings.

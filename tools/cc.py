@@ -1,8 +1,14 @@
 """Host toolchain wrapper: compiles generated C with clang-cl."""
 import glob
+import hashlib
+import json
 import os
+import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
+
+import modcache
 
 
 def _find_clang():
@@ -45,6 +51,84 @@ if VPX_LIBS:
     CFLAGS += ["/DSSBU_HAVE_VPX", "/I", os.path.join(VPX_DIR, "include")]
 # (they were built against the DLL C runtime; this program uses the static one)
 EXTRA_LIBS = OPUS_LIBS + VPX_LIBS + (["/NODEFAULTLIB:msvcrt.lib"] if OPUS_LIBS or VPX_LIBS else [])
+
+
+def file_digest(path):
+    with open(path, "rb") as f:
+        return hashlib.file_digest(f, "sha256").hexdigest()
+
+
+@lru_cache(maxsize=4)
+def _compiler_digest(path, size, mtime_ns, ctime_ns):
+    # Hash a large compiler only once per observed file revision, across module batches.
+    return file_digest(path)
+
+
+def compile_identity():
+    """Windows compile inputs shared by module and runtime objects, separate from C generation.
+
+    Track repository headers by content, including nested headers. External SDK/codec header
+    contents are not tracked; clean the build after updating those in place. Compiler digest
+    memoization assumes an executable is not changed while preserving all its stat fields.
+    """
+    compiler = shutil.which(CLANG)
+    if compiler is None:
+        raise FileNotFoundError(f"compiler not found: {CLANG}")
+    compiler = os.path.realpath(compiler)
+    stat = os.stat(compiler)
+    headers = {}
+    for directory, _dirs, names in os.walk(RUNTIME):
+        for name in sorted(names):
+            if name.endswith(".h"):
+                path = os.path.join(directory, name)
+                headers[os.path.relpath(path, RUNTIME)] = file_digest(path)
+    inputs = {
+        "compiler": [compiler, _compiler_digest(compiler, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)],
+        "flags": CFLAGS,
+        "environment": {name: os.environ.get(name, "") for name in ("INCLUDE", "CL", "_CL_")},
+        "wrapper": file_digest(__file__),
+        "headers": headers,
+    }
+    return hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
+
+
+def compile_cached(jobs_list, outdir, jobs=16):
+    """Compile stale (source, object, optimization) triples; stamp only a successful batch.
+
+    Content identities catch restored/copied sources with old timestamps. The stamp travels
+    with adopted module objects; paths inside it are relative so same-tree adoption stays warm.
+    A missing/invalid stamp rebuilds everything, including after interruption or partial failure.
+    """
+    stamp = os.path.join(outdir, "compile.txt")
+    state = {"identity": compile_identity(), "sources": {}}
+    for src, obj, opt in jobs_list:
+        state["sources"][os.path.relpath(obj, outdir)] = [file_digest(src), opt]
+    try:
+        with open(stamp, encoding="utf-8") as f:
+            previous = json.load(f)
+        if not isinstance(previous, dict) or not isinstance(previous.get("sources"), dict):
+            previous = {}
+    except (OSError, ValueError):
+        previous = {}
+    todo = [(src, obj, opt) for src, obj, opt in jobs_list
+            if previous.get("identity") != state["identity"] or not os.path.isfile(obj)
+            or previous.get("sources", {}).get(os.path.relpath(obj, outdir))
+            != state["sources"][os.path.relpath(obj, outdir)]]
+    if not todo and previous == state:
+        return [], 0
+    # Unlink both stamp and objects: adopted files may be hard links into another tree.
+    if os.path.exists(stamp):
+        os.remove(stamp)
+    for _src, obj, _opt in todo:
+        if os.path.exists(obj):
+            os.remove(obj)
+    failures = compile_each(todo, jobs)
+    if not failures:
+        failures = [(src, "compiler produced no object") for src, obj, _opt in jobs_list
+                    if not os.path.isfile(obj)]
+    if not failures:
+        modcache.replace_file(stamp, json.dumps(state, sort_keys=True) + "\n")
+    return failures, len(todo)
 
 
 def compile_one(src, obj, opt="/O2"):

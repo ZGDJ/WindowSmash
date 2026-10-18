@@ -513,21 +513,17 @@ def compile_dir(outdir, jobs):
     import cc
     with open(os.path.join(outdir, "manifest.tsv")) as f:
         rows = [line.split("\t") for line in f.read().splitlines()]
-    todo = []
+    sources = []
     for name, _insns, biggest in rows + [["g_module.c", "0", "0"]]:
         src = os.path.join(outdir, name)
         obj = src[:-2] + ".obj"
-        if not os.path.exists(obj) or os.path.getmtime(obj) < os.path.getmtime(src):
-            # very large functions make the optimiser superlinear; build those at a lower level
-            todo.append((src, obj, "/O1" if int(biggest) > 20000 or name == "g_module.c" else "/O2"))
-    for _src, obj, _opt in todo:   # a new file, not one written through (it may be a link: modcache.adopt)
-        if os.path.exists(obj):
-            os.remove(obj)
+        # very large functions make the optimiser superlinear; build those at a lower level
+        sources.append((src, obj, "/O1" if int(biggest) > 20000 or name == "g_module.c" else "/O2"))
     t0 = time.time()
-    failures = cc.compile_each(todo, jobs)
+    failures, compiled = cc.compile_cached(sources, outdir, jobs)
     objs = [n for n in os.listdir(outdir) if n.endswith(".obj")]
     total = sum(os.path.getsize(os.path.join(outdir, n)) for n in objs)
-    print(f"{os.path.basename(outdir)}: compiled {len(todo) - len(failures)} of {len(todo)} stale files in "
+    print(f"{os.path.basename(outdir)}: compiled {compiled - len(failures)} of {compiled} stale files in "
           f"{time.time() - t0:,.0f}s; {len(objs)} objects, {total / 1048576:,.0f} MB")
     for src, err in failures[:5]:
         print(f"FAILED {os.path.basename(src)}:\n{err[:1500]}")
@@ -540,33 +536,29 @@ def link(dirs, exe):
     t0 = time.time()
     rt_dir = os.path.join(os.path.dirname(exe), "rt")
     os.makedirs(rt_dir, exist_ok=True)
-    headers = max(os.path.getmtime(os.path.join(cc.RUNTIME, n)) for n in os.listdir(cc.RUNTIME) if n.endswith(".h"))
     sources = [n for n in os.listdir(cc.RUNTIME) if re.fullmatch(r"(host|kernel|gpu\w*|hle\w*|ipc\w*|debug\w*|net\w*)\.c", n)]
     jobs = []
     for n in sources:
         src, obj = os.path.join(cc.RUNTIME, n), os.path.join(rt_dir, n[:-2] + ".obj")
-        if not os.path.exists(obj) or os.path.getmtime(obj) < max(os.path.getmtime(src), headers):
-            jobs.append((src, obj, "/O2"))
+        jobs.append((src, obj, "/O2"))
     # Native implementations by name, for symbols no module defines.
     names = sorted(hle_names())
     table = os.path.join(rt_dir, "hle_table.c")
-    changed = write_if_changed(table, '#include "host.h"\n\n' + "".join(f"GuestFn hle_{n};\n" for n in names)
+    write_if_changed(table, '#include "host.h"\n\n' + "".join(f"GuestFn hle_{n};\n" for n in names)
                                + "const HleEntry hle_table[] = {\n" + "".join(f'    {{"{n}", hle_{n}}},\n' for n in names)
                                + f"    {{0, 0}}\n}};\nconst u32 hle_count = {len(names)};\n")
-    if changed or not os.path.exists(table[:-2] + ".obj"):
-        jobs.append((table, table[:-2] + ".obj", "/O1"))
+    jobs.append((table, table[:-2] + ".obj", "/O1"))
     # The run-time loadable modules (NROs) linked in, for nn::ro to find by build id.
     nros = [os.path.basename(os.path.normpath(d)) for d in dirs
             if os.path.basename(os.path.dirname(os.path.normpath(d))) == "nro"]
     nro_table = os.path.join(rt_dir, "nro_table.c")
-    changed = write_if_changed(nro_table, '#include "module.h"\n\n'
+    write_if_changed(nro_table, '#include "module.h"\n\n'
                                + "".join(f"extern const RtModule rt_module_{n};\n" for n in nros)
                                + "const RtModule *const rt_nro_modules[] = {"
                                + "".join(f"&rt_module_{n}, " for n in nros) + "0};\n"
                                + f"const u32 rt_nro_count = {len(nros)};\n")
-    if changed or not os.path.exists(nro_table[:-2] + ".obj"):
-        jobs.append((nro_table, nro_table[:-2] + ".obj", "/O1"))
-    failures = cc.compile_each(jobs, 4)
+    jobs.append((nro_table, nro_table[:-2] + ".obj", "/O1"))
+    failures, _compiled = cc.compile_cached(jobs, rt_dir, 4)
     for src, err in failures:
         print(f"FAILED {os.path.basename(src)}:\n{err[:4000]}")
     if failures:

@@ -1,0 +1,39 @@
+name: Source checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    name: Windows / Python ${{ matrix.python }}
+    runs-on: windows-2022
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.14']
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+      # These checks use only the standard library and disposable synthetic data.
+      - name: Validate project contract
+        run: python tools/check_project_docs.py
+      - name: Source unit tests
+        if: ${{ !cancelled() }}
+        run: python -m unittest discover -s tests -v
+      - name: Loopback relay tests
+        if: ${{ !cancelled() }}
+        run: python -I tools/test_ssbu_relay.py -v

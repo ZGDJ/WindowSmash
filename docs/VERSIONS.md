@@ -84,7 +84,18 @@ a changed file as a new one, so one version never changes another's files.
 Each module's build folder has a `module.txt` stamp: build ID, address, name, and a fingerprint of
 the tools that generated it (the recompiler's sources and the runtime's list of native functions).
 With the same fingerprint, the C isn't generated again; it's only checked for objects to compile.
-After a change to the recompiler, the C is generated again, but only changed files are compiled.
+After a change to the recompiler, the C is generated again. On Windows, each compilation batch
+also has a separate `compile.txt` content stamp: source contents, runtime headers, compiler,
+flags and optimization must match before its objects are reused. A changed shared compile
+identity rebuilds the batch; a source-only change rebuilds affected files. Legacy folders
+without this stamp rebuild objects once. Failed/interrupted batches cannot publish a valid
+stamp, and rebuilding an adopted hard link leaves its donor intact.
+
+Use `recomp.py all` (or `compile` before `link`) after changes; standalone `link` expects its
+module directories already compiled. External Windows SDK/codec headers changed in place
+still require a fresh build: use an isolated checkout with no donor build trees so automatic
+adoption cannot restore those objects. Do not run concurrent writers against one build folder.
+The separate Linux build path retains its own cache policy and is outside this Windows gate.
 
 **Fighter module addresses.** Every module is built for a fixed address. `module_bases.txt` in
 the checkout keeps one address per build ID for all versions, seeded from each folder's
