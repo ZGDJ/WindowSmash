@@ -9,7 +9,7 @@ from urllib.parse import unquote, urlsplit
 
 STATUSES = ('todo', 'in_progress', 'blocked', 'done')
 CURATED = ('README.md', 'AGENTS.md', 'docs/FSD.md', 'docs/AGENT_WORKFLOW.md',
-           'docs/VALIDATION.md', 'docs/UPSTREAM.md', 'milestones/README.md')
+           'docs/VALIDATION.md', 'docs/UPSTREAM.md', 'docs/ROLLBACK_DESIGN.md', 'milestones/README.md')
 TASK = re.compile(r'^### (M\d+\.\d+) - (.+)$', re.MULTILINE)
 
 

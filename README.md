@@ -9,6 +9,7 @@ A Windows x64 research fork of [WindowSmash](https://github.com/SNO2207/WindowSm
 - [Milestones](milestones/README.md): the only task-status source of truth.
 - [Functional specification](docs/FSD.md): requirements, acceptance gates and open choices.
 - [Architecture decisions](adr/README.md): accepted, proposed and deferred decisions.
+- [GGPO and Smash rollback contract](docs/ROLLBACK_DESIGN.md): callback responsibilities, Ultimate fixtures and transferable Slippi methods.
 - [Agent instructions](AGENTS.md) and [workflow](docs/AGENT_WORKFLOW.md): autonomous execution and handoffs.
 - [Validation](docs/VALIDATION.md) and [evidence](evidence/README.md): what has actually been demonstrated.
 - [Upstream architecture/provenance](docs/UPSTREAM.md): inherited capabilities and limitations.

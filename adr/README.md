@@ -7,5 +7,6 @@ ADRs own decisions; [FSD](../docs/FSD.md) owns requirements; [milestones](../mil
 - [0003 Version and scope](0003-version-and-scope.md): accepted 13.0.5/full-roster target.
 - [0004 Input netplay](0004-input-netplay.md): proposed; library/topology deferred.
 - [0005 Evidence and autonomy](0005-evidence-and-autonomy.md): accepted workflow/authorization.
+- [0006 GGPO contract and Slippi methods](0006-ggpo-contract-and-slippi-methods.md): accepted interface/research direction; dependency adoption deferred.
 
 New ADRs need status/date, context, decision, alternatives, consequences and reconsideration trigger. Preserve superseded records with replacement links. Proposed does not mean implemented. Library/checkpoint choices require evidence.

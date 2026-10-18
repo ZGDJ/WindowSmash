@@ -24,6 +24,8 @@ Inventory authoritative/excluded/reconstructible state including native continua
 
 For semantic changes, also compare named mechanics to the pinned upstream recomp under equivalent conditions (FSD-013). Record instrumentation/input differences and unavailable comparisons. Deterministic replay of modified behavior cannot prove preservation of the original behavior.
 
+Apply the [GGPO/Smash contract](ROLLBACK_DESIGN.md): before-input frame boundaries, immutable checkpoint ownership, force-replay/synctest diagnostics, repeated overlapping correction, oldest-history tests and confirmation-safe terminal outcomes. Never compare hashes from different epochs or mismatched before/after-input boundaries. Callback mocks validate integration plumbing only. Record effect-policy artifacts separately from authoritative divergence.
+
 Apply trial counts/depths from [FSD.md](FSD.md); no silent reductions or empty-fixture passes. Use event logs plus audiovisual checks as applicable. Report tails/memory, not just averages. Reopen affected tasks/dependencies when evidence invalidates assumptions. Independently review high-risk state/scheduling changes.
 
 CI green covers only jobs run. Private 13.0.5 gameplay remains a separate gate. Never upload game data or run untrusted PRs on private-data runners.

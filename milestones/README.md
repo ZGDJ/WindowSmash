@@ -67,6 +67,17 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Next: Add minimal workflow without private runners/data.
 - Blocker: none
 
+### M0.6 - Audit GGPO and Smash-specific design
+- Status: done
+- Depends: M0.1, M0.3
+- Size: 2
+- Requirement: FSD-012, FSD-014, FSD-015
+- Evidence: evidence/2026-10-18-ggpo-slippi-audit.md
+- Acceptance: Primary GGPO/Slippi sources inspected; design/FSD/dependencies address adapter, input-history and terminal-state gaps; independent review and validator pass.
+- Owner: unassigned
+- Next: Use the accepted contract in engine and session work; revalidate backend specifics when pinning dependencies.
+- Blocker: none
+
 ## M1 - Reproducible 13.0.5 baseline
 
 ### M1.1 - Input and build identity tooling
@@ -121,7 +132,7 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Size: 5
 - Requirement: FSD-003
 - Evidence: none
-- Acceptance: Both logical input lanes and frame sampling satisfy FSD-003 with actual battle evidence.
+- Acceptance: Both logical input lanes, discovered sampling cadence and game-side history satisfy FSD-003; include press/hold/release/buffered actions and hitlag-sensitive correction outcomes.
 - Owner: unassigned
 - Next: Separate tape schema from game consumption hooks.
 - Blocker: none
@@ -187,11 +198,11 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 
 ### M4.1 - Restore and replay correctness
 - Status: todo
-- Depends: M3.2, M3.3
+- Depends: M3.2, M3.3, M6.1
 - Size: 8
 - Requirement: FSD-005
 - Evidence: none
-- Acceptance: FSD-005 counts/depths/mechanics pass against uninterrupted oracle; independent state/continuation review passes.
+- Acceptance: FSD-005 counts/depths and named early mechanics fixtures pass uninterrupted oracle, including altered spawn/ownership/allocation/RNG paths; independent review passes.
 - Owner: unassigned
 - Next: Split capture/restore, lifecycle and replay test packets.
 - Blocker: none
@@ -202,20 +213,42 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Size: 8
 - Requirement: FSD-006
 - Evidence: none
-- Acceptance: Wrong-input corrections match oracle at specified depths; GPU/audio/file/network effects handled and reviewed.
+- Acceptance: Wrong-input and repeated overlapping corrections match oracle; effect policy and render-on/off hashes pass, oldest history/resource growth tested and reviewed.
 - Owner: unassigned
 - Next: Split classification, suppression and correction-oracle packets.
 - Blocker: none
 
 ### M4.3 - Performance and supported window
 - Status: todo
-- Depends: M4.2
+- Depends: M4.2, M4.4, M4.5
 - Size: 5
 - Requirement: FSD-007
 - Evidence: none
 - Acceptance: Hardware/window selected and p95/p99 catch-up/memory budgets met; failures drive profiling.
 - Owner: unassigned
 - Next: Agree hardware floor and scene matrix before claiming supported limits.
+- Blocker: none
+
+### M4.4 - GGPO-shaped adapter and offline diagnostics
+- Status: todo
+- Depends: M4.1
+- Size: 3
+- Requirement: FSD-014
+- Evidence: none
+- Acceptance: Engine save/load/free/log/step contract tested on actual battle; initial/oldest checkpoints, buffer ownership and forced replay diagnostic cases pass. Actual GGPO synctest adoption follows M5.2.
+- Owner: unassigned
+- Next: Implement the proven engine boundary without duplicating transport; document callback numbering and coordinator ownership.
+- Blocker: none
+
+### M4.5 - Speculative terminal-state barrier
+- Status: todo
+- Depends: M4.2
+- Size: 5
+- Requirement: FSD-015
+- Evidence: none
+- Acceptance: Wrong predicted last-stock KO/timeout/simultaneous outcome can be corrected offline; no premature teardown/unload/save/result and exactly one committed outcome.
+- Owner: unassigned
+- Next: Test simulated confirmation schedules and resource retention; network confirmation remains M5.2.
 - Blocker: none
 
 ## M5 - Online sessions
@@ -226,7 +259,7 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Size: 3
 - Requirement: FSD-008
 - Evidence: none
-- Acceptance: Resolve ADR-0004 with offline evidence; specify library/topology/identity/prediction cap/disconnect policy.
+- Acceptance: Resolve ADR-0004/0006 with offline evidence; pin GGPO candidate or justify alternate backend; specify initial-state/epoch, confirmation-signal access, delay/prediction/pacing and disconnect policy.
 - Owner: unassigned
 - Next: Evaluate integration at the established engine boundary.
 - Blocker: none
@@ -235,9 +268,9 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Status: todo
 - Depends: M5.1
 - Size: 8
-- Requirement: FSD-008
+- Requirement: FSD-008, FSD-014, FSD-015
 - Evidence: none
-- Acceptance: Two actual instances pass compatible/incompatible handshake, confirmed-state oracle and bounded missing-input behavior.
+- Acceptance: Actual adapter synctest and two-peer oracle pass; failed sync never advances; initial-state mismatch, old epochs, prediction limit, time-sync, disconnect/rematch and terminal confirmation pass.
 - Owner: unassigned
 - Next: Split handshake, history, coordinator and disconnect packets.
 - Blocker: none
@@ -261,7 +294,7 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Size: 3
 - Requirement: FSD-010
 - Evidence: none
-- Acceptance: Enumerate 13.0.5 fighters/DLC/Mii and approved stages/rules; entries initially untested with high-risk interaction plan.
+- Acceptance: Enumerate 13.0.5 fighters/DLC/Mii and approved stages/rules; entries initially untested; select named early input-history/combat/lifecycle/RNG/terminal fixtures before M4.1, plus full-roster interaction plan.
 - Owner: unassigned
 - Next: Confirm stage/Mii choices and inventory mechanics.
 - Blocker: none

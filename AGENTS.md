@@ -18,6 +18,7 @@ Rollback is unproven; never turn synthetic test results into gameplay claims.
 - Prefer original recompiled behavior; justify semantic changes with ADRs and evidence.
 - Compare semantic changes to pinned upstream behavior; self-consistent replay alone is insufficient.
 - Critical hooks must uniquely validate against 13.0.5 and fail closed on mismatch.
+- Follow `docs/ROLLBACK_DESIGN.md`; prove confirmation-safe match end and preserve input history.
 - Run affected checks, fix introduced regressions, and record commands/results.
 - Synthetic tests use disposable fixtures; run without asking at every step.
 - Run `python tools/check_project_docs.py` after project-documentation changes.
