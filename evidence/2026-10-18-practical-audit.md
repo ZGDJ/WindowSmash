@@ -85,7 +85,28 @@ Final integrated `python -m unittest discover -s tests -v`: 51/51 pass in 6.147 
 Hosted [source CI run 39147300140](https://github.com/ZGDJ/WindowSmash/actions/runs/39147300140)
 passed on implementation/planning revision `f3ca71eb1ea97db9f218e0ad1a373550b1d7389b`.
 Both Windows Python 3.12 and 3.14 jobs completed all three checks successfully (46 seconds per
-job). M0.5 is closed with this observed run; no game-backed gate is closed.
+job). No game-backed gate is closed.
+
+The subsequent docs-only revision `b04d6ed` exposed a second intermittent failure in
+[run 39147389494](https://github.com/ZGDJ/WindowSmash/actions/runs/39147389494): Python 3.12
+passed, but Python 3.14 failed `Timeouts.test_host_timeout_tells_stations` with
+`no LM_GONE after the host timed out` (28/29 relay tests passed). M0.5 was reopened;
+the earlier successful run does not waive this failure.
+
+The follow-up demonstrated that the test helper discarded unrelated packets while waiting
+for a PONG. Three deterministic receive-order tests failed against the old helper (four failed
+assertions including both GONE and LEAVE cases). Commit `3717a0a` retains unmatched packets
+for later consumers, including when PONG never arrives, and delivers each packet once in order.
+The product relay is unchanged. All 32 relay tests pass locally (22.024 seconds, exit 0).
+Ten rounds of the three new tests plus both actual timeout tests pass (50/50, 28.433 seconds,
+exit 0). Exact packet ordering in the hosted failure was not captured, so its attribution to
+this demonstrated race remains an inference; setup-drain timing is another unproven possibility.
+No retries, skipped cases or longer sleep thresholds hide the failure.
+
+Corrected [CI run 39147608676](https://github.com/ZGDJ/WindowSmash/actions/runs/39147608676)
+passed all three checks on revision `3717a0a0ce120d764025a8154761ed8165a58efc`, on both
+Windows Python 3.12 (45 seconds) and 3.14 (51 seconds). This validates 51 source tests and
+32 relay tests on each version; M0.5 is closed again with the failure and remediation preserved.
 
 The source fixes, CI and planning updates are available in
 [draft PR #2](https://github.com/ZGDJ/WindowSmash/pull/2) against the fork's `main` branch.
