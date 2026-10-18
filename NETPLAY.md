@@ -22,7 +22,7 @@ There is one local player per WindowSmash instance. A private relay can hold up 
 
 ## Online lobby (default)
 
-1. Put the lobby's address in `online_server.txt`. The first line that is not a comment is `host:port`, optionally followed by a lobby code. The repository ships a placeholder address (`lobby.example.invalid:39420`): replace it with a lobby your group runs (see [Standalone relay or lobby](#standalone-relay-or-lobby)). Write `off` there to make `Play SSBU.bat` start offline.
+1. `online_server.txt` names the lobby. The first line that is not a comment is `host:port`, optionally followed by a lobby code. It ships with the public lobby, `smash.recomps.wtf:39420`; to use a lobby your group runs instead, put its address there (see [Standalone relay or lobby](#standalone-relay-or-lobby)). Write `off` there to make `Play SSBU.bat` start offline.
 2. Double-click **`Play SSBU.bat`**. The first time, it asks for the name other players see and keeps it in `online_name.txt`; edit or delete that file to change it.
 3. If Windows Firewall asks, allow `ssbu.exe`. Players only send to the lobby, so no port forwarding is needed.
 4. In the game's main menu, select **Local Wireless**. To host, select **Create a Room** and accept challengers. To join, open **Rooms List** and pick a room; open rooms come first, fuller ones before emptier ones.

@@ -1,3 +1,3 @@
 # The online lobby Play SSBU.bat joins (see NETPLAY.md): the first line that is not a comment,
 # host:port, then an optional lobby code that only your friends use. "off": play offline.
-lobby.example.invalid:39420
+smash.recomps.wtf:39420
