@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 import unittest
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ssbu_relay as R   # noqa: E402
@@ -81,6 +82,7 @@ class Player:
         self.nonce = secrets.token_bytes(8)
         self.room, self.build, self.name = room, build, name
         self.ip = self.cookie = None
+        self.pending = []
 
     def close(self):
         self.s.close()
@@ -89,8 +91,9 @@ class Player:
         self.s.sendto(data, self.addr)
 
     def recv(self, wait=0.4):
-        """Every packet that arrives within wait seconds."""
-        out, until = [], time.monotonic() + wait
+        """Buffered packets, followed by every packet that arrives within wait seconds."""
+        out, self.pending = self.pending, []
+        until = time.monotonic() + wait
         while True:
             left = until - time.monotonic()
             if left <= 0:
@@ -103,7 +106,10 @@ class Player:
             out.append(data)
 
     def first(self, kind, wait=0.6):
-        """The first packet of this kind within wait seconds (others are dropped)."""
+        """Consume the first packet of this kind, preserving unrelated notifications."""
+        for i, data in enumerate(self.pending):
+            if data[3] == kind:
+                return self.pending.pop(i)
         until = time.monotonic() + wait
         while True:
             left = until - time.monotonic()
@@ -116,6 +122,7 @@ class Player:
                 return None
             if data[3] == kind:
                 return data
+            self.pending.append(data)
 
     def join_packet(self, version=R.PROTOCOL, size=R.JOIN_SIZE):
         p = (R.header(R.JOIN, version) + self.nonce + self.room.encode().ljust(32, b"\0") +
@@ -161,6 +168,43 @@ class Player:
     def datas(self, wait=0.4):
         """The DATA packets that arrive: (source, destination, source port, payload)."""
         return [(*struct.unpack_from(">IIH", p, 4), p[16:]) for p in self.recv(wait) if p[3] == R.DATA]
+
+
+class PlayerReceive(unittest.TestCase):
+    def player_with_packets(self, packets):
+        sock = Mock(spec=socket.socket)
+        sock.recvfrom.side_effect = [(packet, ("127.0.0.1", 1234)) for packet in packets] + [socket.timeout()]
+        with patch.object(socket, "socket", return_value=sock):
+            player = Player(Mock(port=1234))
+        player.cookie = 1
+        self.addCleanup(player.close)
+        return player
+
+    def test_ping_preserves_timeout_notifications_before_pong(self):
+        session = bytes(range(16))
+        for kind in (R.LM_GONE, R.LM_LEAVE):
+            with self.subTest(kind=kind):
+                notice = R.ldn_packet(R.SUBNET + 2, R.SUBNET + 3, kind, session)
+                pong = R.header(R.PONG) + bytes(13)
+                player = self.player_with_packets([notice, pong])
+                self.assertEqual(player.ping(), pong)
+                self.assertEqual(player.datas(0), [(R.SUBNET + 2, R.SUBNET + 3, R.LDN_PORT, notice[16:])])
+                self.assertEqual(player.recv(0), [])   # delivered exactly once
+
+    def test_missing_pong_preserves_unrelated_packets(self):
+        notice = R.ldn_packet(R.SUBNET + 2, R.SUBNET + 3, R.LM_GONE, bytes(16))
+        player = self.player_with_packets([notice])
+        self.assertIsNone(player.ping())
+        self.assertEqual(player.recv(0), [notice])
+
+    def test_first_can_consume_buffered_packet_without_reordering_others(self):
+        notices = [R.ldn_packet(R.SUBNET + 2, R.SUBNET + 3, kind, bytes(16))
+                   for kind in (R.LM_GONE, R.LM_LEAVE)]
+        pong = R.header(R.PONG) + bytes(13)
+        player = self.player_with_packets([*notices, pong])
+        self.assertEqual(player.ping(), pong)
+        self.assertEqual(player.first(R.DATA, 0), notices[0])
+        self.assertEqual(player.recv(0), notices[1:])
 
 
 class LobbyTest(unittest.TestCase):
