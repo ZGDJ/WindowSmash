@@ -55,6 +55,7 @@
 *.til
 
 # Local Python / editor / credential files
+/artifacts/local/
 __pycache__/
 *.py[cod]
 .venv/
