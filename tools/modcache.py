@@ -22,6 +22,9 @@ volume allows (instant, no space), else copies, with their times, so objects sta
 recomp.py replaces a file rather than writing into it (write_if_changed, compile_dir), so a
 tree never changes another's files through a link. With the same tools fingerprint (the
 generator's sources and the runtime's native-function set) the C is not generated again.
+Objects have a separate compile.txt content stamp (cc.compile_cached): runtime headers,
+compiler, flags and source contents must match before they are reused. Legacy build dirs
+without this stamp regenerate their objects once. Failed batches leave no compile stamp.
 """
 import hashlib
 import os
