@@ -7,7 +7,10 @@ Every instruction in the module is lifted; the resulting C statements are groupe
 "template" (the statement with numbers abstracted away), and K distinct real encodings
 per template are executed from R random CPU states both natively (lifted C compiled to
 x64) and under unicorn. All registers, flags, the next PC and memory writes must match.
+Exit codes: 0 nonempty comparison without hard mismatches, 1 mismatch, 2 invalid arguments
+or inconclusive (no completed comparisons). Reported coverage still limits any pass.
 """
+import argparse
 import os
 import random
 import re
@@ -325,16 +328,48 @@ def _run(args):
 
 
 # ---------------------------------------------------------------------------- driver
-def arg(name, default=None):
-    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
+def nonnegative_int(value):
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("must be an integer") from None
+    if number < 0:
+        raise argparse.ArgumentTypeError("must be zero or greater")
+    return number
+
+
+def positive_int(value):
+    number = nonnegative_int(value)
+    if number == 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return number
+
+
+def comparison_exit_code(total, mismatches):
+    """No completed comparisons is inconclusive, never a passing differential run."""
+    if total == 0:
+        print("INCONCLUSIVE: no completed state comparisons; inspect selection and reference skips.", file=sys.stderr)
+        return 2
+    return 1 if mismatches else 0
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("nso")
+    parser.add_argument("--per-template", type=positive_int, default=4)
+    parser.add_argument("--states", type=positive_int, default=16)
+    parser.add_argument("--jobs", type=positive_int, default=16)
+    parser.add_argument("--only", default="")
+    parser.add_argument("--show", type=nonnegative_int, default=2)
+    return parser.parse_args(argv)
 
 
 def main():
+    args = parse_args()
     import capstone
-    nso = sys.argv[1]
-    per_template, states = int(arg("--per-template", "4")), int(arg("--states", "16"))
-    jobs = int(arg("--jobs", "16"))
-    only = set(filter(None, arg("--only", "").split(",")))
+    nso = args.nso
+    per_template, states, jobs = args.per_template, args.states, args.jobs
+    only = set(filter(None, args.only.split(",")))
     work = os.path.join(cc.ROOT, "build", "difftest")
     os.makedirs(work, exist_ok=True)
 
@@ -373,6 +408,8 @@ def main():
         if only:
             tests = [t for t in tests if dis(t[0]).split()[0] in only]
         print(f"{len(merged):,} statement templates -> {len(tests):,} test encodings x {states} states")
+        if not tests:
+            return comparison_exit_code(0, False)
 
         per_file = 2000
         sources = []
@@ -424,7 +461,7 @@ def main():
     by_mnem = defaultdict(list)
     for h in hard:
         by_mnem[dis(tests[h[0]][0]).split()[0]].append(h)
-    show = int(arg("--show", "2"))
+    show = args.show
     for m, items in sorted(by_mnem.items(), key=lambda kv: -len({h[0] for h in kv[1]})):
         print(f"\n{m}: {len({h[0] for h in items})} encodings, {len(items)} failing states")
         shown = set()
@@ -437,7 +474,7 @@ def main():
             for stmt in lifter.snippet(addr, n):
                 print(f"      C: {stmt}")
             print(f"      {why}" + (f"; {more}" if more else ""))
-    return 1 if hard else 0
+    return comparison_exit_code(total, hard)
 
 
 if __name__ == "__main__":
