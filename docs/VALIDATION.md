@@ -16,6 +16,41 @@ Do not hide intermittent tests with retries, skips or `continue-on-error`. Prese
 
 Game-backed `difftest.py` and `functest.py` use exit 0 for nonempty comparison without hard mismatches, 1 for mismatches and 2 for invalid arguments or zero completed comparisons. A nonempty run still does not prove sufficient coverage: evidence must name selected cases, compared/skipped counts and exclusions. Set fixture-specific minimum coverage before qualification; do not treat one surviving comparison as full coverage.
 
+## Baseline inventory
+
+After preparing a stopped Windows build, capture its identity before a trial and verify it
+afterward. Run from the same toolchain environment used to build; the output directory must
+already exist. Capture refuses to overwrite an existing file.
+
+```powershell
+python tools/baseline_manifest.py capture --manifest artifacts/local/baseline.json
+python tools/baseline_manifest.py verify --manifest artifacts/local/baseline.json
+```
+
+Use `--tree PATH` for a separate input/build tree. Optional `--fixture PATH --tape PATH` pins
+the trial inputs; supply the same options when verifying. Exit 0 means complete capture or
+unchanged inventory, 1 means drift, and 2 means incomplete/invalid inputs or an invalid output.
+An incomplete capture still writes a diagnostic manifest and returns 2.
+
+Schema 1 records the declared 13.0.5 target, Git revision and build-source hashes, compiler/linker
+identities and compile configuration, full 32-byte module IDs plus module hashes, NRO placement,
+fonts, executable/runtime DLLs, relocated images, compile stamps, DLC configuration, and RomFS
+backing-file/map identities. Fixture/tape identities are optional. Each file uses size/SHA-256;
+the manifest fingerprint hashes canonical JSON excluding the fingerprint itself. Missing roles
+are explicit. Changes to optional inventory also invalidate verification.
+
+Absolute content paths, configuration path text, keys, saves and game bytes are excluded.
+Repository-relative source and module names remain visible; inspect a manifest before sharing.
+Hashing large content images is deliberately thorough and may take time. Stop all writers:
+per-file change checks are best effort, not an atomic snapshot of the whole tree.
+
+This is an observed inventory, not proof that the executable was built from these sources or
+that a declared version is authentic. Installed SDK/external headers and system libraries are
+not exhaustively hashed; record their versions and use an isolated fresh build after updates.
+The compile configuration digest includes local paths/environment, so this fingerprint is a
+local evidence identity, not a future network compatibility token. A complete synthetic manifest
+does not certify real gameplay or full-roster coverage.
+
 ## Evidence and closure
 
 Use [TEMPLATE.md](../evidence/TEMPLATE.md): task/requirement, tested revision/diff identity, environment, commands/exit codes, expected/actual results, artifacts and reviewer. Game evidence also requires executable/module/content identity, fixture/rules/seed, tape hash, hardware/drivers/compiler, frames/trials and first divergence.

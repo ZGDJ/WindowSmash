@@ -92,14 +92,14 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 ## M1 - Reproducible 13.0.5 baseline
 
 ### M1.1 - Input and build identity tooling
-- Status: todo
+- Status: done
 - Depends: M0.1, M0.3
 - Size: 3
 - Requirement: FSD-001, FSD-011
-- Evidence: none
+- Evidence: evidence/2026-10-18-baseline-foundation.md
 - Acceptance: Manifest schema/tool captures version/runtime/toolchain/content identities and passes synthetic tests without exposing data.
 - Owner: unassigned
-- Next: Inspect install_version.py and define manifest.
+- Next: Capture and verify the actual private build before baseline gameplay trials.
 - Blocker: none
 
 ### M1.2 - Build and complete 13.0.5 offline matches
@@ -114,14 +114,14 @@ Run `python tools/check_project_docs.py` for calculated counts, effort totals an
 - Blocker: No private 13.0.5 inputs/build available in current checkout.
 
 ### M1.3 - Critical hook validation
-- Status: todo
+- Status: done
 - Depends: M1.1
 - Size: 3
 - Requirement: FSD-011
-- Evidence: none
+- Evidence: evidence/2026-10-18-baseline-foundation.md
 - Acceptance: Required hooks fail closed for missing/ambiguous/mismatched identity; negative tests pass; actual battle hooks qualify in M2.1.
 - Owner: unassigned
-- Next: Inspect resolve_wraps and required-versus-optional semantics.
+- Next: Register actual pinned hooks only after boundary discovery; qualify them in M2.1.
 - Blocker: none
 
 ### M1.4 - Invalidate stale compiled objects

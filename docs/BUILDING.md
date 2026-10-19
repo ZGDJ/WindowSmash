@@ -164,6 +164,38 @@ For play with another person, follow the dedicated **[multiplayer setup guide](.
 
 ## Tests and local packaging
 
+Capture the stopped build's input/runtime identities before qualification using the
+[baseline inventory commands](VALIDATION.md#baseline-inventory). Missing prerequisites return
+an incomplete report, not a passing baseline.
+
 Install optional test tools with `requirements-dev.txt`. The [technical guide](TECHNICAL.md#verification-and-debugging) covers source-only tests and game-backed differential checks.
 
 `Bundle Latest SSBU.bat` packages an existing local installation; `--dry-run` validates the inputs without creating an archive. The local bundle includes game-derived content and stays out of Git. Public runtime releases use a smaller file set and require separately supplied assets, as described in [runtime setup](RUNTIME-SETUP.md).
+
+## Critical hooks for rollback development
+
+No battle hook is registered yet. After discovering and proving a 13.0.5 boundary, place this
+metadata immediately before its signature and wrapper in a top-level runtime C source:
+
+```text
+/* rollback-required: <module_name> <full_64_hex_build_id> <64_hex_module_file_sha256> */
+/* signature: <space_separated_8_nibble_words> */
+HLE_WRAP(<hex_guest_address>) {
+```
+
+Use module identities from the baseline manifest and the signature from `recomp.py wrap-sig`;
+the values must come from the actual qualified input. A signature can contain `.` wildcard
+nibbles but must constrain code and match exactly one discovered function start, including when
+the original address matches. Malformed/orphan declarations, duplicate wrappers, missing modules,
+identity mismatches, ambiguous signatures and collisions with another wrapper stop the build.
+
+Use `recomp.py all` for builds containing required hooks. It regenerates affected modules and
+their images instead of accepting cached generation, and links only after validation in that
+invocation. Standalone `link` refuses required hooks; they never receive the optional
+`rt_wrap_missing` linker fallback. Other modules retain ordinary incremental reuse, and inherited
+optional debug hooks retain their existing behavior. The Linux builder and Windows renderer
+test builder refuse required hooks until equivalent validation exists. Keep source/input/build writers stopped during a build;
+the guards do not provide an atomic filesystem snapshot or protect against manual output edits.
+
+These checks protect hook installation, not the semantics of the chosen boundary. Actual battle
+qualification remains M2.1, including worker/fiber safety and service completion behavior.
